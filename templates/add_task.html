@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}タスク追加 - だりー君のタスク管理{% endblock %}
+
+{% block content %}
+  <h1>新しいタスクを追加</h1>
+  <form id="taskForm" action="{{ url_for('add_task') }}" method="POST">
+    <fieldset style="border: none; padding: 0;">
+      <label for="subject">科目</label>
+      <input type="text" name="subject" id="subject" required>
+
+      <h2>今日の時間割から科目を選択</h2>
+      {% if timetable_grid %}
+      <table class="timetable-grid">
+        <thead>
+          <tr>
+            <th>限／曜日</th>
+            <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for period in range(1, 6) %}
+          <tr>
+            <th>{{ period }}限</th>
+            {% for day in range(0, 6) %}
+            <td class="timetable-cell" onclick="selectSubject(this)">
+              {{ timetable_grid[period - 1][day] or '' }}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>時間割が登録されていません。</p>
+      {% endif %}
+
+      <label for="category">課題の種類</label>
+      <select name="category" id="category" required onblur="saveTaskInfo()">
+        <option value="">選択してください</option>
+        <option value="レポート">レポート</option>
+        <option value="問題演習">問題演習</option>
+        <option value="プレゼン準備">プレゼン準備</option>
+        <option value="調べ学習">調べ学習</option>
+        <option value="グループディスカッション">グループディスカッション</option>
+        <option value="論文執筆">論文執筆</option>
+        <option value="プロジェクト企画">プロジェクト企画</option>
+        <option value="その他">その他</option>
+      </select>
+
+      <label for="difficulty">やりたくなさ（1〜5）</label>
+      <select name="difficulty" id="difficulty" required>
+        <option value="">選択してください</option>
+        <option value="1">1（やりやすい）</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5（やりたくない）</option>
+      </select>
+
+      <label for="due_date">締切日</label>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="date" name="due_date" id="due_date" required onclick="openDatePicker(event)">
+        <button type="button" class="inline-btn" onclick="setWeekLater()">一週間後</button>
+      </div>
+
+      <button type="button" class="repeat-btn" onclick="fillPreviousTask()">前と同じ</button>
+      <button type="submit">追加する</button>
+    </fieldset>
+  </form>
+
+  <a href="{{ url_for('index') }}" class="back-link">← トップに戻る</a>
+
+  <style>
+    label {
+      display: block;
+      margin-top: 1.2em;
+      font-weight: bold;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 0.7em;
+      margin-top: 0.2em;
+      box-sizing: border-box;
+      font-size: 1rem;
+    }
+
+    .inline-btn {
+      width: auto;
+      padding: 0.5em 1em;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      margin-top: 1.5em;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .repeat-btn {
+      margin-top: 1em;
+      background-color: #008CBA;
+    }
+
+    .timetable-grid {
+      margin-top: 20px;
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .timetable-grid th,
+    .timetable-grid td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+      width: 16.66;
+      text-overflow: ellipsis;
+    }
+
+    .timetable-grid th {
+      background-color: #f0f0f0;
+    }
+
+    .timetable-cell {
+      cursor: pointer;
+      background-color: #fafafa;
+      transition: background-color 0.2s;
+    }
+
+    .timetable-cell:hover {
+      background-color: #e0f0ff;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 2em;
+      text-decoration: none;
+      color: #2a7ae2;
+    }
+  </style>
+
+  <script>
+    function selectSubject(cell) {
+      const subject = cell.textContent.trim();
+      if (subject) {
+        document.getElementById("subject").value = subject;
+      }
+    }
+
+    function saveTaskInfo() {
+      const subject = document.getElementById("subject").value.trim();
+      if (!subject) return;
+      const data = {
+        category: document.getElementById("category").value,
+        difficulty: document.getElementById("difficulty").value
+      };
+      localStorage.setItem("last_details_" + subject, JSON.stringify(data));
+    }
+
+    function loadPreviousTask(subject) {
+      const stored = localStorage.getItem("last_details_" + subject);
+      if (stored) {
+        const details = JSON.parse(stored);
+        if (details.category) document.getElementById("category").value = details.category;
+        if (details.difficulty) document.getElementById("difficulty").value = details.difficulty;
+        return true;
+      }
+      return false;
+    }
+
+    document.getElementById("taskForm").addEventListener("submit", saveTaskInfo);
+
+    function fillPreviousTask() {
+      const subject = document.getElementById("subject").value.trim();
+      if (!subject) {
+        alert("まず科目を選択してください。");
+        return;
+      }
+      const loaded = loadPreviousTask(subject);
+      if (!loaded) {
+        alert("この科目の前回の情報が保存されていません。");
+      }
+
+      setWeekLater();
+    }
+
+    function openDatePicker(e) {
+      const input = e.target;
+      if (input.showPicker) input.showPicker();
+    }
+
+    function setWeekLater() {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      document.getElementById("due_date").value = `${y}-${m}-${day}`;
+    }
+  </script>
+{% endblock %}

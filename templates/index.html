@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set checked_tasks_today = checked_tasks_today or [] %}
+{% set checked_tasks_remaining = checked_tasks_remaining or [] %}
+{% set completed_tasks = completed_tasks or [] %}
+<style>
+.task-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.task-box, .timetable-box {
+    border: 2px solid #4CAF50;
+    padding: 15px;
+    border-radius: 10px;
+    flex: 1;
+    min-width: 250px;
+}
+.timetable-item {
+    padding: 5px 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-weight: bold;
+}
+.timetable-item.p1 { background-color: #f8bbd0; }
+.timetable-item.p2 { background-color: #fff59d; }
+.timetable-item.p3 { background-color: #90caf9; }
+.timetable-item.p4 { background-color: #a5d6a7; }
+.timetable-item.p5 { background-color: #ce93d8; }
+.darii-comment {
+    margin-top: 3px;
+    display: flex;               /* ← 横並びにする */
+    align-items: center;         /* ← 縦位置中央揃え */
+    justify-content: center;     /* ← 中央寄せ */
+    gap: 20px;                   /* ← 絵と吹き出しの間にスペース */
+    flex-wrap: wrap;             /* ← スマホ対応のため折返し許可 */
+    text-align: left;
+}
+
+.darii-comment img {
+    height: 150px;
+}
+
+.darii-comment .speech-bubble {
+    background: #e0f2f1;
+    padding: 15px 20px;
+    border-radius: 15px;
+    border: 3px solid #4CAF50;
+    font-size: 1.2rem;
+    max-width: 400px;            /* 最大幅を調整して吹き出し感を保つ */
+    word-wrap: break-word;
+}
+
+#start-task-btn, .start-btn-remaining {
+    display: block;
+    margin-top: 10px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    }
+    .task-box label {
+    font-size: 0.9rem;  /* お好みで 0.85rem や 0.8rem にしてもOK */
+  }
+  .timetable-item {
+    padding: 10px 15px;          /* 内側の余白を拡大 */
+    margin: 10px 0;              /* 項目間の間隔を少し広く */
+    border-radius: 8px;          /* 丸みも少し拡大 */
+    font-size: 1.1rem;           /* フォントサイズ拡大 */
+    font-weight: bold;
+}
+
+</style>
+
+<form method="POST">
+    <div class="darii-comment">
+      <img src="{{ url_for('static', filename='darikun.JPEG') }}" alt="だりぃくん">
+      <div class="speech-bubble">
+        今日も一緒にがんばろうね〜〜。
+    </div>
+    </div>
+
+
+    <div class="task-section">
+        <div class="task-box">
+            <h2>今日やること</h2>
+            <ul>
+                {% for task in tasks_today %}
+                    <li>
+                        <label>
+                            <!-- チェック時にDBから削除する─Ajax経由で削除 (name属性は "task_○" として task.id を含む) -->
+                            <input type="checkbox" class="delete-on-check" name="task_{{ task.id }}"
+                                {% if ('task_' ~ task.id|string) in checked_tasks_today %}checked{% endif %}
+                                {% if task.id|string in completed_tasks %}checked{% endif %}>
+                            {{ task.subject }}： {{ task.predicted_time_display | default("-") }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+            <select name="selected_task_id">
+                {% for task in tasks_today %}
+                    <option value="{{ task.id }}">{{ task.subject }}（{{ task.category }}）</option>
+                {% endfor %}
+            </select>
+            <button formaction="{{ url_for('start_selected_task') }}" formmethod="get" id="start-task-btn">▶ 作業開始</button>
+        </div>
+
+        <div class="timetable-box">
+            <h2>今日の時間割</h2>
+            {% for slot in timetable %}
+                <div class="timetable-item p{{ loop.index }}">{{ loop.index }}限：{{ slot['subject'] }}</div>
+            {% endfor %}
+        </div>
+    </div>
+
+
+    <div class="task-box" style="margin-top: 40px;">
+        <h2>残りのやることリスト</h2>
+        <ul>
+            {% for task in tasks_remaining %}
+                <li>
+                    <label>
+                        <input type="checkbox" class="delete-on-check" name="remaining_task_{{ task.id }}"
+                            {% if ('remaining_task_' ~ task.id|string) in checked_tasks_remaining %}checked{% endif %}
+                            {% if task.id|string in completed_tasks %}checked{% endif %}>
+                        {{ task.subject }}（{{ task.category }}）：予測時間 {{ task.predicted_time_display | default("-") }}
+                    </label>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <select name="selected_remaining_task_id">
+            {% for task in tasks_remaining %}
+                <option value="{{ task.id }}">{{ task.subject }}（{{ task.category }}）</option>
+            {% endfor %}
+        </select>
+        <button formaction="{{ url_for('start_selected_task') }}" formmethod="get" class="start-btn-remaining">
+            ▶ 作業開始
+        </button>
+    </div>
+</form>
+
+{% endblock %}

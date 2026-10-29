@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>初期設定</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 1em 2em;
+        }
+        h1, h2 {
+            margin-bottom: 0.5em;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1em;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.5em;
+            text-align: center;
+        }
+         input {
+            padding: 0.3em;
+            box-sizing: border-box;
+            width: 80%;
+        }
+        button {
+            margin-top: 1.5em;
+            padding: 0.5em 1em;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 2em;
+            padding: 8px 16px;
+            background: #ccc;
+            color: #000;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>初期設定</h1>
+
+    <form method="POST" id="setupForm">
+        <h2>1. 各曜日の課題に使える時間（分）</h2>
+        <table>
+            <thead>
+                <tr>
+                    {% for day in ["月", "火", "水", "木", "金", "土", "日"] %}
+                        <th>{{ day }}曜日</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    {% for day in ["月", "火", "水", "木", "金", "土", "日"] %}
+                        <td>
+                            <input type="number" name="available_{{ loop.index0 }}" min="0" required
+                                   value="{{ available_times[day] if available_times and day in available_times else '' }}">
+                        </td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>2. 各曜日の時間割（1限～5限）</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>限/曜日</th>
+                    {% for day in ["月", "火", "水", "木", "金", "土"] %}
+                        <th>{{ day }}曜日</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for period in range(1, 6) %}
+                    <tr>
+                        <td>{{ period }}限</td>
+                        {% for day_index in range(0, 6) %}
+                            <td>
+                                <input type="text" name="timetable_{{ day_index }}_{{ period }}" style="width: 90%;"
+                                       value="{{ timetable_grid[day_index][period-1] if timetable_grid else '' }}">
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit">保存</button>
+    </form>
+
+    <a href="{{ url_for('index') }}" class="back-link">← 戻る</a>
+
+    <script>
+      // ページロード時に localStorage から値を読み込み、各入力欄にセットする（必要に応じて）
+      function loadSettings() {
+          document.querySelectorAll('#setupForm input').forEach(input => {
+              const key = 'setup_' + input.name;
+              const savedValue = localStorage.getItem(key);
+              if (savedValue !== null) {
+                  input.value = savedValue;
+              }
+          });
+      }
+
+      // フォーム送信時に、各入力欄の値を localStorage に保存する（必要に応じて）
+      function saveSettings() {
+          document.querySelectorAll('#setupForm input').forEach(input => {
+              const key = 'setup_' + input.name;
+              localStorage.setItem(key, input.value);
+          });
+      }
+
+      window.addEventListener('load', loadSettings);
+      document.getElementById('setupForm').addEventListener('submit', function() {
+          saveSettings();
+      });
+    </script>
+</body>
+</html>

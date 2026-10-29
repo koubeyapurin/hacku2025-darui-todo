@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>初期設定</title>
+    <style>
+        /* メニューバー関連のスタイル */
+        .menu-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #2a7ae2;
+            padding: 10px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        .menu-btn {
+            margin: 0 15px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .menu-icon {
+            font-size: 1.5em;
+        }
+        /* コンテンツはメニューバー分の余白を確保 */
+        .content {
+            padding-top: 60px; /* メニューバーの高さ＋余白 */
+        }
+        /* ページ共通のスタイル */
+        body {
+            font-family: Arial, sans-serif;
+            padding: 1em 2em;
+        }
+        h1, h2 {
+            margin-bottom: 0.5em;
+        }
+        label {
+            display: block;
+            margin-top: 0.5em;
+        }
+        input {
+            padding: 0.3em;
+            box-sizing: border-box;
+        }
+        fieldset {
+            margin-top: 1em;
+            padding: 1em;
+            border: 1px solid #ccc;
+        }
+        legend {
+            font-weight: bold;
+        }
+        button {
+            margin-top: 1.5em;
+            padding: 0.5em 1em;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 2em;
+            padding: 8px 16px;
+            background: #ccc;
+            color: #000;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- メニューバー -->
+    <div class="menu-bar">
+        <!-- メイン画面 -->
+        <a href="{{ url_for('index') }}" class="menu-btn" title="メイン画面">
+            <span class="menu-icon">🏠</span>
+            <span class="menu-text">メイン</span>
+        </a>
+        <!-- タスク追加画面 -->
+        <a href="{{ url_for('add_task') }}" class="menu-btn" title="タスク追加">
+            <span class="menu-icon">➕</span>
+            <span class="menu-text">追加</span>
+        </a>
+        <!-- 設定画面 -->
+        <a href="{{ url_for('setup') }}" class="menu-btn" title="設定">
+            <span class="menu-icon">⚙️</span>
+            <span class="menu-text">設定</span>
+        </a>
+    </div>
+
+    <!-- コンテンツ部分 -->
+    <div class="content">
+        <h1>初期設定</h1>
+
+        <form method="POST" id="setupForm">
+            <h2>1. 各曜日の課題に使える時間（分）</h2>
+            {% for day in ["月", "火", "水", "木", "金", "土", "日"] %}
+                <label>
+                    {{ day }}曜日:
+                    <input type="number" name="available_{{ loop.index0 }}" min="0" required>
+                </label>
+            {% endfor %}
+
+            <h2>2. 各曜日の時間割（1限～5限）</h2>
+            {# 時間割登録は「月」～「土」までに限定 #}
+            {% for day in ["月", "火", "水", "木", "金", "土"] %}
+                {% set day_index = loop.index0 %}
+                <fieldset>
+                    <legend>{{ day }}曜日</legend>
+                    {% for period in range(1, 6) %}
+                        <label>
+                            {{ period }}限:
+                            <input type="text" name="timetable_{{ day_index }}_{{ period }}" style="width: auto;">
+                        </label>
+                    {% endfor %}
+                </fieldset>
+            {% endfor %}
+
+            <button type="submit">保存</button>
+        </form>
+
+        <!-- 元の画面（トップページ）に戻るボタン -->
+        <a href="{{ url_for('index') }}" class="back-link">← 戻る</a>
+
+        <script>
+          // ページロード時に localStorage から値を読み込み、各入力欄にセットする
+          function loadSettings() {
+              document.querySelectorAll('#setupForm input').forEach(input => {
+                  const key = 'setup_' + input.name;
+                  const savedValue = localStorage.getItem(key);
+                  if (savedValue !== null) {
+                      input.value = savedValue;
+                  }
+              });
+          }
+
+          // フォーム送信時に、各入力欄の値を localStorage に保存する
+          function saveSettings() {
+              document.querySelectorAll('#setupForm input').forEach(input => {
+                  const key = 'setup_' + input.name;
+                  localStorage.setItem(key, input.value);
+              });
+          }
+
+          // 読み込み時に設定を反映
+          window.addEventListener('load', loadSettings);
+
+          // フォーム送信時に設定を保存
+          document.getElementById('setupForm').addEventListener('submit', function() {
+              saveSettings();
+          });
+        </script>
+    </div>
+</body>
+</html>

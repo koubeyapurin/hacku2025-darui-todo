@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>タスクタイマー</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2em;
+      position: relative;
+    }
+
+    #timerDisplay {
+      font-size: 2em;
+      margin-bottom: 1em;
+    }
+
+    button {
+      padding: 0.7em 1.2em;
+      font-size: 1em;
+      margin: 0.3em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #progressForm {
+      margin-top: 2em;
+      display: none;
+    }
+
+    /* ↓ だりぃくんの吹き出し表示 */
+    .darii-comment {
+      margin-top: 3em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      text-align: left;
+    }
+
+    .darii-comment img {
+      height: 120px;
+    }
+
+    .darii-comment .speech-bubble {
+      background: #e0f2f1;
+      padding: 15px 20px;
+      border-radius: 15px;
+      border: 3px solid #4CAF50;
+      font-size: 1.1rem;
+      max-width: 350px;
+      word-wrap: break-word;
+    }
+  </style>
+  <script>
+    const TASK_ID = "{{ task_id }}";
+    const STORAGE_KEY = "timerState_" + TASK_ID;
+    let timerInterval = null;
+    let startTime = null;
+    let elapsedSeconds = 0;
+    let running = false;
+
+    function saveState() {
+      const state = {
+        task_id: TASK_ID,
+        elapsedSeconds: elapsedSeconds,
+        running: running,
+        startTime: running ? startTime : null
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadState() {
+      const stateStr = localStorage.getItem(STORAGE_KEY);
+      if (stateStr) {
+        try {
+          const state = JSON.parse(stateStr);
+          elapsedSeconds = state.elapsedSeconds || 0;
+          running = state.running || false;
+          if (running && state.startTime) {
+            startTime = state.startTime;
+          }
+        } catch(e) {
+          console.error("状態読み込み失敗:", e);
+        }
+      }
+    }
+
+    function updateDisplay() {
+      let total = elapsedSeconds;
+      if (running && startTime) {
+        total += Math.floor((Date.now() - startTime) / 1000);
+      }
+      const min = Math.floor(total / 60);
+      const sec = total % 60;
+      document.getElementById("timerDisplay").textContent = `経過時間: ${min}分 ${sec}秒`;
+    }
+
+    function handleStart() {
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("toggleBtn").style.display = "inline-block";
+      startTime = Date.now();
+      running = true;
+      saveState();
+      timerInterval = setInterval(updateDisplay, 1000);
+      updateDisplay();
+      document.getElementById("toggleBtn").textContent = "中断";
+    }
+
+    function togglePauseResume() {
+      if (running) {
+        clearInterval(timerInterval);
+        elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
+        running = false;
+        document.getElementById("toggleBtn").textContent = "再開";
+      } else {
+        startTime = Date.now();
+        running = true;
+        timerInterval = setInterval(updateDisplay, 1000);
+        document.getElementById("toggleBtn").textContent = "中断";
+      }
+      saveState();
+      updateDisplay();
+    }
+
+    function finishTask() {
+      if (running) {
+        clearInterval(timerInterval);
+        elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
+        localStorage.setItem(`taskCompleted_${TASK_ID}`, 'true');
+      }
+      const minutesSpent = Math.round(elapsedSeconds / 60);
+      document.getElementById("time_spent").value = minutesSpent;
+      localStorage.removeItem(STORAGE_KEY);
+      document.getElementById("taskForm").submit();
+    }
+
+    function temporaryExit() {
+      if (running) {
+        clearInterval(timerInterval);
+        elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
+      }
+      running = false;
+      startTime = null;
+      timerInterval = null;
+
+      const minutesSpent = Math.round(elapsedSeconds / 60);
+      document.getElementById("progress_time_spent").value = minutesSpent;
+      document.getElementById("progressMessage").textContent = `${minutesSpent}分頑張っています。現在の進捗状況を入力してください。`;
+      localStorage.removeItem(STORAGE_KEY);
+
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("toggleBtn").style.display = "none";
+      document.querySelector("button[onclick='finishTask()']").style.display = "none";
+      document.querySelector("button[onclick='temporaryExit()']").style.display = "none";
+
+      document.getElementById("progressForm").style.display = "block";
+    }
+
+    window.onload = function() {
+      loadState();
+      if (running && startTime) {
+        const offlineSeconds = Math.floor((Date.now() - startTime) / 1000);
+        elapsedSeconds += offlineSeconds;
+        startTime = Date.now();
+        saveState();
+      }
+      updateDisplay();
+      if (running) {
+        document.getElementById("startBtn").style.display = "none";
+        document.getElementById("toggleBtn").style.display = "inline-block";
+        document.getElementById("toggleBtn").textContent = "中断";
+        timerInterval = setInterval(updateDisplay, 1000);
+      } else {
+        if (elapsedSeconds > 0) {
+          document.getElementById("startBtn").style.display = "none";
+          document.getElementById("toggleBtn").style.display = "inline-block";
+          document.getElementById("toggleBtn").textContent = "再開";
+        } else {
+          document.getElementById("startBtn").style.display = "inline-block";
+          document.getElementById("toggleBtn").style.display = "none";
+        }
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>タスク中…</h1>
+  <div id="timerDisplay">経過時間: 0分 0秒</div>
+
+  <button type="button" id="startBtn" onclick="handleStart()">開始</button>
+  <button type="button" id="toggleBtn" style="display:none;" onclick="togglePauseResume()">中断</button>
+  <button type="button" onclick="finishTask()">終わり</button>
+  <button type="button" onclick="temporaryExit()">いったん終了</button>
+
+  <form id="taskForm" method="POST" action="{{ url_for('finish_task', task_id=task_id) }}">
+    <input type="hidden" id="time_spent" name="time_spent" value="">
+  </form>
+
+  <div id="progressForm">
+    <h3 id="progressMessage"></h3>
+    <form method="POST" action="{{ url_for('partial_finish_task', task_id=task_id) }}">
+      <input type="hidden" id="progress_time_spent" name="time_spent" value="">
+      <label for="progress">進捗度（%）:</label>
+      <select name="progress" id="progress">
+        {% for i in range(0, 101, 10) %}
+          <option value="{{ i }}">{{ i }}%</option>
+        {% endfor %}
+      </select>
+      <br><br>
+      <button type="submit">送信</button>
+    </form>
+  </div>
+
+  <!-- 🐢 だりぃくん 吹き出し表示 -->
+  <div class="darii-comment">
+    <img src="{{ url_for('static', filename='darikun.JPEG') }}" alt="だりぃくん">
+    <div class="speech-bubble">あとちょっと、その調子〜〜</div>
+  </div>
+</body>
+</html>
